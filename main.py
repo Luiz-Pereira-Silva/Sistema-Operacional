@@ -7,7 +7,7 @@ super_bloco = Super_bloco()
 diretorio_atual = super_bloco.root
 
 while(1):
-    interpretar_comando(input(f"{diretorio_atual}: "), diretorio_atual, super_bloco)
+    diretorio_atual = interpretar_comando(input(f"{diretorio_atual}: "), diretorio_atual, super_bloco)
 
 # # Diretório inicial
 # super_bloco = Super_bloco()

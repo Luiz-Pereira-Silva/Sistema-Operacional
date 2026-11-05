@@ -38,23 +38,32 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
                 nome = comando[j:i + 1]
             elif passo == 3:
                 string = comando[j:i + 1]
-    diretorio_alvo = procurar_diretorio(caminho, diretorio_atual)
+    diretorio_alvo = procurar_diretorio(caminho, super_bloco.root)
 
     match executar_string:
         case "mkdir":
             dir.criar_diretorio(diretorio_alvo, nome)
+            return diretorio_atual
         case "touch":
             file.criar_arquivo(nome, diretorio_alvo, super_bloco)
+            return diretorio_atual
         case "ls":
             dir.listar_diretorio(diretorio_alvo)
+            return diretorio_atual
         case "echo":
             file.escrever_arquivo(nome, string, diretorio_alvo, super_bloco)
+            return diretorio_atual
         case "cat":
             print(file.ler_arquivo(nome, diretorio_alvo, super_bloco))
+            return diretorio_atual
         case "rmdir":
             dir.remover_diretorio(diretorio_alvo, nome)
+            return diretorio_atual
         case "rm":
             file.remover_arquivo(nome, diretorio_alvo, super_bloco)
+            return diretorio_atual
+        case "cd":
+            return diretorio_alvo
         case _:
             print("error")
 
