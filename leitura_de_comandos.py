@@ -18,25 +18,19 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
     string = ""
     passo = 0
 
-    print()
-    print(comando)
-
     for i in range(len(comando)):
         if comando[i] == " " and passo == 0:
             executar_string = comando[j:i]
             j = i + 1
             passo += 1
-
         elif comando[i] == " " and passo == 1:
             caminho = comando[j:i]
             j = i + 1
             passo += 1
-
         elif comando[i] == " " and passo == 2:
             nome = comando[j:i]
             j = i + 1
             passo += 1
-
         elif i == len(comando) - 1:
             if passo == 1:
                 caminho = comando[j:i + 1]
@@ -44,44 +38,23 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
                 nome = comando[j:i + 1]
             elif passo == 3:
                 string = comando[j:i + 1]
-
-    diretorio_alvo = procurar_diretorio(
-        caminho, diretorio_atual
-    )
+    diretorio_alvo = procurar_diretorio(caminho, diretorio_atual)
 
     match executar_string:
-
         case "mkdir":
             dir.criar_diretorio(diretorio_alvo, nome)
-
         case "touch":
-            file.criar_arquivo(
-                nome, diretorio_alvo, super_bloco
-            )
-
+            file.criar_arquivo(nome, diretorio_alvo, super_bloco)
         case "ls":
             dir.listar_diretorio(diretorio_alvo)
-
         case "echo":
-            file.escrever_arquivo(
-                nome, string, diretorio_alvo, super_bloco
-            )
-
+            file.escrever_arquivo(nome, string, diretorio_alvo, super_bloco)
         case "cat":
-            print(
-                file.ler_arquivo(
-                    nome, diretorio_alvo, super_bloco
-                )
-            )
-
+            print(file.ler_arquivo(nome, diretorio_alvo, super_bloco))
         case "rmdir":
             dir.remover_diretorio(diretorio_alvo, nome)
-
         case "rm":
-            file.remover_arquivo(
-                nome, diretorio_alvo, super_bloco
-            )
-
+            file.remover_arquivo(nome, diretorio_alvo, super_bloco)
         case _:
             print("error")
 
