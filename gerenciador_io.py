@@ -80,9 +80,13 @@ class GerenciadorIO:
                     })
             return {
                 "nome": diretorio.nome,
+                "dono_uid": diretorio.dono_uid,
+                "grupo_gid": diretorio.grupo_gid,
+                "permissoes": diretorio.permissoes,
                 "referencias": referencias
             }
         inodes = []
+        
         for inode in self.super_bloco.tabela_inodes:
             if inode is None:
                 inodes.append(None)
@@ -90,7 +94,10 @@ class GerenciadorIO:
                 inodes.append({
                     "inode_id": inode.inode_id,
                     "tamanho": inode.tamanho,
-                    "blocos": inode.blocos
+                    "blocos": inode.blocos,
+                    "dono_uid": inode.dono_uid,
+                    "grupo_gid": inode.grupo_gid,
+                    "permissoes": inode.permissoes
                 })
         metadados = {
             "bitmap_blocos": self.super_bloco.bitmap_blocos.tolist(),

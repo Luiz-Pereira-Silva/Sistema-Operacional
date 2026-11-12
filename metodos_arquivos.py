@@ -8,12 +8,14 @@ class Arquivo:
     def __repr__(self):
         return f"(a, {self.nome})"
 
-
 class Inode:
-    def __init__(self, inode_id):
+    def __init__(self, inode_id, dono_uid=0, grupo_gid=0, permissoes=0o644):
         self.inode_id = inode_id
         self.tamanho = 0
         self.blocos = []
+        self.dono_uid = dono_uid
+        self.grupo_gid = grupo_gid
+        self.permissoes = permissoes
 
     def __repr__(self):
         return (
@@ -70,7 +72,11 @@ def criar_arquivo(nome, diretorio_atual, super_bloco):
         if referencia.nome == nome:
             raise ValueError("Arquivo já existe")
     inode = alocar_novo_inode(super_bloco)
+    usuario = super_bloco.sessao.usuario
+    inode.dono_uid = usuario.uid
+    inode.grupo_gid = usuario.gid
     diretorio_atual.referencias.append(Arquivo(nome, inode.inode_id))
+
 
 def procurar_arquivo(nome, diretorio_atual, super_bloco):
     for referencia in diretorio_atual.referencias:

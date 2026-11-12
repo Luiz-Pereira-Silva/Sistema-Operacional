@@ -2,32 +2,43 @@ import hashlib
 import hmac
 import os
 
+LER, ESCREVER, EXECUTAR = 4, 2, 1
+NOMES_ACAO = {LER: "LEITURA", ESCREVER: "ESCRITA", EXECUTAR: "EXECUÇÃO"}
+
 
 class PermissaoNegada(Exception):
     pass
 
 
+def formatar_permissoes(modo):
+    letras = ""
+    for deslocamento in (6, 3, 0):
+        bits = (modo >> deslocamento) & 7
+        letras += "r" if bits & LER else "-"
+        letras += "w" if bits & ESCREVER else "-"
+        letras += "x" if bits & EXECUTAR else "-"
+    return letras
+
+
 class Usuario:
     def __init__(self, nome, uid, gid, salt, hash_senha):
-        self.nome = nome            # nome de login
-        self.uid = uid              # identificador único do usuário
-        self.gid = gid              # grupo primário
-        self.salt = salt            # texto aleatório guardado em hex
-        self.hash_senha = hash_senha    # resultado da hash da senha + salt
+        self.nome = nome
+        self.uid = uid
+        self.gid = gid
+        self.salt = salt
+        self.hash_senha = hash_senha
 
 
-# criptografa a senha através de uma função de hash segura (PBKDF2 com SHA-256)
 def gerar_hash(senha, salt_hex):
     return hashlib.pbkdf2_hmac(
         "sha256", senha.encode("utf-8"), bytes.fromhex(salt_hex), 100_000
     ).hex()
 
 
-# cadastro no sistema 
 class GerenciadorUsuarios:
     def __init__(self):
-        self.usuarios = {}                       # achar usuário pelo nome
-        self.grupos = {0: {"nome": "admin", "membros": {0}}}   # 
+        self.usuarios = {}
+        self.grupos = {0: {"nome": "admin", "membros": {0}}}
         self.proximo_uid = 1
         self.proximo_gid = 1
         self._registrar("root", "root", uid=0, gid=0)
@@ -66,14 +77,28 @@ class GerenciadorUsuarios:
         return usuario
 
     def grupos_do_usuario(self, usuario):
-        """Conjunto de gids a que o usuário pertence (usaremos na ACL)."""
         return {gid for gid, g in self.grupos.items() if usuario.uid in g["membros"]}
+
+    def nome_do_uid(self, uid):
+        for u in self.usuarios.values():
+            if u.uid == uid:
+                return u.nome
+        return str(uid)
+
+    def nome_do_gid(self, gid):
+        return self.grupos[gid]["nome"] if gid in self.grupos else str(gid)
+
+    def uid_por_nome(self, nome):
+        if nome not in self.usuarios:
+            raise ValueError("Usuário inexistente")
+        return self.usuarios[nome].uid
 
 
 class Sessao:
     def __init__(self, gerenciador):
         self.gerenciador = gerenciador
-        self.usuario = gerenciador.usuarios["root"]   # sistema inicia como root
+        self.usuario = gerenciador.usuarios["root"]
+        self.log = []
 
     @property
     def modo(self):
@@ -84,3 +109,32 @@ class Sessao:
             raise PermissaoNegada(
                 f"'{operacao}' exige privilégios de superusuário (modo kernel)"
             )
+
+    def verificar(self, objeto, acao, caminho):
+        usuario = self.usuario
+        if usuario.uid == 0:
+            return
+
+        if usuario.uid == objeto.dono_uid:
+            bits = (objeto.permissoes >> 6) & 7
+        elif objeto.grupo_gid in self.gerenciador.grupos_do_usuario(usuario):
+            bits = (objeto.permissoes >> 3) & 7
+        else:
+            bits = objeto.permissoes & 7
+
+        if bits & acao:
+            return
+
+        g = self.gerenciador
+        print("[SISTEMA DE SEGURANÇA - VERIFICAÇÃO DE ACL]")
+        print(f"Objeto      : {caminho}")
+        print(f"Proprietário: {g.nome_do_uid(objeto.dono_uid)} (Grupo: {g.nome_do_gid(objeto.grupo_gid)})")
+        print(f"Permissões  : {formatar_permissoes(objeto.permissoes)} ({objeto.permissoes:o})")
+        print(f"Ação Pedida : {NOMES_ACAO[acao]} por '{usuario.nome}' "
+              f"(Grupo: {g.nome_do_gid(usuario.gid)})")
+        self.log.append(f"{usuario.nome} negado: {NOMES_ACAO[acao]} em {caminho}")
+        raise PermissaoNegada(
+            f"O usuário '{usuario.nome}' não possui permissão de "
+            f"{NOMES_ACAO[acao].lower()} no objeto '{caminho}'.\n"
+            "Tentativa não autorizada registrada nos logs do sistema."
+        )
