@@ -6,6 +6,7 @@ from disk_simulator import (
     IORequest
 )
 import metodos_arquivos as file
+from seguranca import exportar_seguranca
 
 class GerenciadorIO:
 
