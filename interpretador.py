@@ -123,6 +123,7 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
         elif executar_string == "groupadd":
             sessao.exigir_kernel("groupadd")
             super_bloco.usuarios.criar_grupo(partes[1])
+            io.atualizar_metadados()
             print("Grupo criado com sucesso")
 
         elif executar_string == "useradd":
@@ -130,6 +131,7 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             nome, grupo = partes[1], partes[2]
             senha = partes[3] if len(partes) > 3 else getpass.getpass("Senha: ")
             super_bloco.usuarios.criar_usuario(nome, senha, grupo)
+            io.atualizar_metadados()
             print("Usuário criado com sucesso")
 
         elif executar_string == "chmod":
