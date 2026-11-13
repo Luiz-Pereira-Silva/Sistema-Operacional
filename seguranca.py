@@ -138,3 +138,24 @@ class Sessao:
             f"{NOMES_ACAO[acao].lower()} no objeto '{caminho}'.\n"
             "Tentativa não autorizada registrada nos logs do sistema."
         )
+
+def exportar_seguranca(gerenciador):
+    """Dados de usuários e grupos prontos para o JSON de metadados (sem senhas em texto puro)."""
+    return {
+        "usuarios": [
+            {
+                "nome": u.nome,
+                "uid": u.uid,
+                "gid": u.gid,
+                "salt": u.salt,
+                "hash_senha": u.hash_senha,
+            }
+            for u in gerenciador.usuarios.values()
+        ],
+        "grupos": [
+            {"gid": gid, "nome": g["nome"], "membros": sorted(g["membros"])}
+            for gid, g in gerenciador.grupos.items()
+        ],
+        "proximo_uid": gerenciador.proximo_uid,
+        "proximo_gid": gerenciador.proximo_gid,
+    }
