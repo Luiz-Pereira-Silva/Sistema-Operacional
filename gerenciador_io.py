@@ -109,7 +109,8 @@ class GerenciadorIO:
             "bitmap_blocos": self.super_bloco.bitmap_blocos.tolist(),
             "bitmap_inodes": self.super_bloco.bitmap_inodes.tolist(),
             "inodes": inodes,
-            "root": serializar_diretorio(self.super_bloco.root)
+            "root": serializar_diretorio(self.super_bloco.root),
+            "seguranca": exportar_seguranca(self.super_bloco.usuarios)
         }
         dados = json.dumps(metadados).encode("utf-8")
         tamanho_bloco = file.tamanho_bloco
