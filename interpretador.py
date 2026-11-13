@@ -1,5 +1,6 @@
 import getpass
 import shlex
+import antivirus
 import numpy as np
 import metodos_arquivos as file
 import metodos_diretorios as dir
@@ -160,6 +161,29 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             u = super_bloco.usuarios
             print(f"Proprietário: {u.nome_do_uid(objeto.dono_uid)} (Grupo: {u.nome_do_gid(objeto.grupo_gid)})")
             print(f"Permissões  : {formatar_permissoes(objeto.permissoes)} ({objeto.permissoes:o})")
+
+
+        elif executar_string == "antivirus_scan":
+            sessao.exigir_kernel("antivirus_scan")
+            alvo = procurar_diretorio(partes[1], super_bloco.root, sessao)
+            antivirus.varrer(super_bloco, alvo, partes[1])
+
+        elif executar_string == "simular_ataque":
+            sessao.exigir_kernel("simular_ataque")
+            caminho, nome = partes[1], partes[2]
+            alvo = procurar_diretorio(caminho, super_bloco.root, sessao)
+            inode = file.procurar_arquivo(nome, alvo, super_bloco)
+            bloco, disco, stripe = antivirus.simular_adulteracao(super_bloco, inode)
+            print(f"[SIMULAÇÃO] Bloco lógico {bloco} adulterado diretamente no "
+                  f"Disco {disco} (stripe {stripe}), sem passar pelo sistema de arquivos.")
+
+        elif executar_string == "logs":
+            sessao.exigir_kernel("logs")
+            if sessao.log:
+                for registro in sessao.log:
+                    print(registro)
+            else:
+                print("(sem registros)")
 
         else:
             print("Comando inexistente")
