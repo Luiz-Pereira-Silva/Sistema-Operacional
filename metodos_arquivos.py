@@ -16,6 +16,18 @@ class Inode:
         self.dono_uid = dono_uid
         self.grupo_gid = grupo_gid
         self.permissoes = permissoes
+        self.criptografado = False
+        self.salt_cripto = None
+        self.nonce_cripto = None
+        self.verificador_chave = None
+        self.hashes_blocos = []
+
+    def __repr__(self):
+        return (
+            f"Inode(id={self.inode_id}, "
+            f"tamanho={self.tamanho}, "
+            f"blocos={self.blocos})"
+        )
 
     def __repr__(self):
         return (
