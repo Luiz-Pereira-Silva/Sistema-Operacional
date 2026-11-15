@@ -1,9 +1,10 @@
 import getpass
 import shlex
-import antivirus
 import numpy as np
 import metodos_arquivos as file
 import metodos_diretorios as dir
+import criptografia as cripto
+import antivirus
 from gerenciador_io import GerenciadorIO
 from seguranca import (
     GerenciadorUsuarios, Sessao, PermissaoNegada,
@@ -31,6 +32,15 @@ def procurar_objeto(alvo, nome, super_bloco):
                 return super_bloco.tabela_inodes[ref.inode_id]
             return ref
     raise ValueError("Objeto inexistente")
+
+def gravar_conteudo(nome, conteudo, alvo, super_bloco):
+    io = super_bloco.gerenciador_io
+    inode = file.procurar_arquivo(nome, alvo, super_bloco)
+    blocos_antigos = inode.blocos.copy()
+    file.escrever_arquivo(nome, conteudo, alvo, super_bloco)
+    io.limpar_blocos(set(blocos_antigos) - set(inode.blocos))
+    io.gravar_arquivo(inode)
+    return inode
 
 def interpretar_comando(comando, diretorio_atual, super_bloco):
     io = super_bloco.gerenciador_io
@@ -69,6 +79,8 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             alvo = procurar_diretorio(caminho, super_bloco.root, sessao)
             inode = file.procurar_arquivo(nome, alvo, super_bloco)
             sessao.verificar(inode, ESCREVER, caminho_completo(caminho, nome))
+            if inode.criptografado:
+                raise ValueError("Arquivo criptografado: use 'decrypt' antes de escrever")
             blocos_antigos = inode.blocos.copy()
 
             file.escrever_arquivo(nome, string, alvo, super_bloco)
@@ -82,7 +94,18 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             alvo = procurar_diretorio(caminho, super_bloco.root, sessao)
             inode = file.procurar_arquivo(nome, alvo, super_bloco)
             sessao.verificar(inode, LER, caminho_completo(caminho, nome))
-            print(io.ler_arquivo(inode))
+            if inode.criptografado:
+                bruto = io.ler_arquivo_bytes(inode)
+                if len(partes) > 3:
+                    claro = cripto.decifrar(
+                        bruto, partes[3], inode.salt_cripto,
+                        inode.nonce_cripto, inode.verificador_chave
+                    )
+                    print(claro.decode("utf-8"))
+                else:
+                    print("[CRIPTOGRAFADO] 0x" + bruto.hex().upper())
+            else:
+                print(io.ler_arquivo(inode))
 
         elif executar_string == "rmdir":
             caminho, nome = partes[1], partes[2]
@@ -108,7 +131,7 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             io.ler_metadados()
             return alvo
 
-        # ---------- comandos novos (etapa 3) ----------
+        # ---------- comandos da etapa 3 ----------
         elif executar_string == "login":
             senha = partes[2] if len(partes) > 2 else getpass.getpass("Senha: ")
             usuario = super_bloco.usuarios.autenticar(partes[1], senha)
@@ -164,6 +187,50 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             print(f"Proprietário: {u.nome_do_uid(objeto.dono_uid)} (Grupo: {u.nome_do_gid(objeto.grupo_gid)})")
             print(f"Permissões  : {formatar_permissoes(objeto.permissoes)} ({objeto.permissoes:o})")
 
+        elif executar_string == "encrypt":
+            caminho, nome, chave = partes[1], partes[2], partes[3]
+            alvo = procurar_diretorio(caminho, super_bloco.root, sessao)
+            inode = file.procurar_arquivo(nome, alvo, super_bloco)
+            completo = caminho_completo(caminho, nome)
+            sessao.verificar(inode, LER, completo)
+            sessao.verificar(inode, ESCREVER, completo)
+            if inode.criptografado:
+                raise ValueError("Arquivo já está criptografado")
+            claro = io.ler_arquivo_bytes(inode)
+            cifrado, salt, nonce, verificador = cripto.cifrar(claro, chave)
+            inode = gravar_conteudo(nome, cifrado, alvo, super_bloco)
+            inode.criptografado = True
+            inode.salt_cripto = salt
+            inode.nonce_cripto = nonce
+            inode.verificador_chave = verificador
+            io.atualizar_metadados()
+            if cifrado:
+                previa = "0x" + cifrado[:8].hex().upper() + "..."
+            else:
+                previa = "(arquivo vazio)"
+            print(f"Arquivo '{completo}' criptografado com sucesso.")
+            print(f'Conteúdo gravado nos blocos físicos: "{previa} (Encrypted Ciphertext)"')
+
+        elif executar_string == "decrypt":
+            caminho, nome, chave = partes[1], partes[2], partes[3]
+            alvo = procurar_diretorio(caminho, super_bloco.root, sessao)
+            inode = file.procurar_arquivo(nome, alvo, super_bloco)
+            completo = caminho_completo(caminho, nome)
+            sessao.verificar(inode, LER, completo)
+            sessao.verificar(inode, ESCREVER, completo)
+            if not inode.criptografado:
+                raise ValueError("Arquivo não está criptografado")
+            claro = cripto.decifrar(
+                io.ler_arquivo_bytes(inode), chave, inode.salt_cripto,
+                inode.nonce_cripto, inode.verificador_chave
+            )
+            inode = gravar_conteudo(nome, claro, alvo, super_bloco)
+            inode.criptografado = False
+            inode.salt_cripto = None
+            inode.nonce_cripto = None
+            inode.verificador_chave = None
+            io.atualizar_metadados()
+            print(f"Arquivo '{completo}' descriptografado com sucesso.")
 
         elif executar_string == "antivirus_scan":
             sessao.exigir_kernel("antivirus_scan")

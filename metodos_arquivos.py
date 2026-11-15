@@ -8,6 +8,7 @@ class Arquivo:
     def __repr__(self):
         return f"(a, {self.nome})"
 
+
 class Inode:
     def __init__(self, inode_id, dono_uid=0, grupo_gid=0, permissoes=0o644):
         self.inode_id = inode_id
@@ -21,13 +22,6 @@ class Inode:
         self.nonce_cripto = None
         self.verificador_chave = None
         self.hashes_blocos = []
-
-    def __repr__(self):
-        return (
-            f"Inode(id={self.inode_id}, "
-            f"tamanho={self.tamanho}, "
-            f"blocos={self.blocos})"
-        )
 
     def __repr__(self):
         return (
@@ -58,7 +52,7 @@ def desalocar_inode(inode_id, super_bloco):
     super_bloco.tabela_inodes[inode_id] = None
 
 def alocar_inode(string, super_bloco):
-    dados = string.encode("utf-8")
+    dados = string if isinstance(string, (bytes, bytearray)) else string.encode("utf-8")
     numero_de_blocos = (len(dados) + tamanho_bloco - 1) // tamanho_bloco
     blocos = []
     if numero_de_blocos == 0:
@@ -89,7 +83,6 @@ def criar_arquivo(nome, diretorio_atual, super_bloco):
     inode.grupo_gid = usuario.gid
     diretorio_atual.referencias.append(Arquivo(nome, inode.inode_id))
 
-
 def procurar_arquivo(nome, diretorio_atual, super_bloco):
     for referencia in diretorio_atual.referencias:
         if isinstance(referencia, Arquivo):
@@ -97,13 +90,13 @@ def procurar_arquivo(nome, diretorio_atual, super_bloco):
                 return super_bloco.tabela_inodes[referencia.inode_id]
     raise ValueError("Arquivo inexistente")
 
-def escrever_arquivo(nome, string, diretorio_atual, super_bloco):
+def escrever_arquivo(nome, conteudo, diretorio_atual, super_bloco):
     inode = procurar_arquivo(nome, diretorio_atual, super_bloco)
     blocos_antigos = inode.blocos.copy()
     for bloco in blocos_antigos:
         super_bloco.bitmap_blocos[bloco] = 0
     try:
-        novos_blocos = alocar_inode(string, super_bloco)
+        novos_blocos = alocar_inode(conteudo, super_bloco)
     except ValueError:
         for bloco in blocos_antigos:
             super_bloco.bitmap_blocos[bloco] = 1
@@ -112,7 +105,8 @@ def escrever_arquivo(nome, string, diretorio_atual, super_bloco):
         if bloco not in novos_blocos:
             super_bloco.blocos[bloco] = 0
     inode.blocos = novos_blocos
-    inode.tamanho = len(string.encode("utf-8"))
+    dados = conteudo if isinstance(conteudo, (bytes, bytearray)) else conteudo.encode("utf-8")
+    inode.tamanho = len(dados)
 
 def remover_arquivo(nome, diretorio_atual, super_bloco):
     for referencia in diretorio_atual.referencias:
