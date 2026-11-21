@@ -1,3 +1,4 @@
+import hashlib
 import json
 from disk_simulator import (
     RAID5,
@@ -5,6 +6,7 @@ from disk_simulator import (
     IORequest
 )
 import metodos_arquivos as file
+from seguranca import exportar_seguranca
 
 class GerenciadorIO:
 
@@ -80,6 +82,9 @@ class GerenciadorIO:
                     })
             return {
                 "nome": diretorio.nome,
+                "dono_uid": diretorio.dono_uid,
+                "grupo_gid": diretorio.grupo_gid,
+                "permissoes": diretorio.permissoes,
                 "referencias": referencias
             }
         inodes = []
@@ -90,13 +95,22 @@ class GerenciadorIO:
                 inodes.append({
                     "inode_id": inode.inode_id,
                     "tamanho": inode.tamanho,
-                    "blocos": inode.blocos
+                    "blocos": inode.blocos,
+                    "dono_uid": inode.dono_uid,
+                    "grupo_gid": inode.grupo_gid,
+                    "permissoes": inode.permissoes,
+                    "criptografado": inode.criptografado,
+                    "salt_cripto": inode.salt_cripto,
+                    "nonce_cripto": inode.nonce_cripto,
+                    "verificador_chave": inode.verificador_chave,
+                    "hashes_blocos": inode.hashes_blocos
                 })
         metadados = {
             "bitmap_blocos": self.super_bloco.bitmap_blocos.tolist(),
             "bitmap_inodes": self.super_bloco.bitmap_inodes.tolist(),
             "inodes": inodes,
-            "root": serializar_diretorio(self.super_bloco.root)
+            "root": serializar_diretorio(self.super_bloco.root),
+            "seguranca": exportar_seguranca(self.super_bloco.usuarios)
         }
         dados = json.dumps(metadados).encode("utf-8")
         tamanho_bloco = file.tamanho_bloco
@@ -118,6 +132,11 @@ class GerenciadorIO:
         return []
 
     def gravar_arquivo(self, inode):
+        # registro oficial de integridade: hash de cada bloco no momento da gravação
+        inode.hashes_blocos = [
+            hashlib.sha256(self.super_bloco.blocos[bloco].tobytes()).hexdigest()
+            for bloco in inode.blocos
+        ]
         for bloco in inode.blocos:
             self.gravar_bloco_fs(bloco)
         self.persistir_metadados()
@@ -140,3 +159,12 @@ class GerenciadorIO:
     def atualizar_metadados(self):
         self.persistir_metadados()
         self.processar_fila()
+
+    def ler_arquivo_bytes(self, inode):
+        for bloco in inode.blocos:
+            self.solicitar_leitura(bloco)
+        dados_lidos = self.processar_fila()
+        dados = bytearray()
+        for bloco in dados_lidos:
+            dados.extend(bloco)
+        return bytes(dados[:inode.tamanho])
