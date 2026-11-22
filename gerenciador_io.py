@@ -43,7 +43,7 @@ class GerenciadorIO:
             return []
         requisicoes = [item[0] for item in self.fila]
         resultado = self.scheduler.schedule(requisicoes, self.cabeca)
-        print("\n========== ESCALONAMENTO FCFS ==========")
+        print(f"\n========== ESCALONAMENTO {getattr(self.scheduler, 'nome', 'FCFS')} ==========")
         print("Ordem de atendimento:", " -> ".join(map(str, resultado.order)))
         print("Deslocamentos:",resultado.movements)
         print("Movimento total:", resultado.total_movement, "trilhas")

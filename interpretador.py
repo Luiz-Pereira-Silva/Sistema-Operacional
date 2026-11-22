@@ -1,6 +1,8 @@
 import getpass
 import shlex
 import numpy as np
+import comandos_memoria as mem
+import diagnostico as diag
 import metodos_arquivos as file
 import metodos_diretorios as dir
 import criptografia as cripto
@@ -12,7 +14,7 @@ from seguranca import (
 )
 
 class Super_bloco:
-    def __init__(self):
+    def __init__(self, num_molduras=None):
         self.bitmap_blocos = np.zeros(25, dtype=np.uint8)
         self.blocos = np.zeros((25, file.tamanho_bloco), dtype=np.uint8)
         self.bitmap_inodes = np.zeros(10, dtype=np.uint8)
@@ -21,6 +23,7 @@ class Super_bloco:
         self.usuarios = GerenciadorUsuarios()
         self.sessao = Sessao(self.usuarios)
         self.gerenciador_io = GerenciadorIO(self)
+        mem.iniciar_memoria(self, num_molduras)
 
 def caminho_completo(caminho, nome):
     return caminho.rstrip("/") + "/" + nome
@@ -52,6 +55,12 @@ def interpretar_comando(comando, diretorio_atual, super_bloco):
             return diretorio_atual
 
         executar_string = partes[0]
+
+        if mem.tratar(executar_string, partes, super_bloco):
+            return diretorio_atual
+
+        if diag.tratar(executar_string, partes, super_bloco):
+            return diretorio_atual
 
         if executar_string == "mkdir":
             caminho, nome = partes[1], partes[2]
