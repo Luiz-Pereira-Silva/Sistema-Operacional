@@ -14,6 +14,8 @@ class SchedulingResult:
     total_movement: int
 
 class FCFSScheduler:
+    nome = "FCFS"
+
     @staticmethod
     def schedule(requests, initial_head):
         current = initial_head
@@ -26,6 +28,28 @@ class FCFSScheduler:
             current = request.track
 
         return SchedulingResult(order, movements, sum(movements))
+
+class SSTFScheduler:
+    """Shortest Seek Time First: atende sempre a trilha mais próxima da cabeça."""
+    nome = "SSTF"
+
+    @staticmethod
+    def schedule(requests, initial_head):
+        pendentes = list(requests)
+        current = initial_head
+        order = [initial_head]
+        movements = []
+
+        while pendentes:
+            proxima = min(pendentes, key=lambda r: abs(current - r.track))  # empate: a mais antiga
+            pendentes.remove(proxima)
+            movements.append(abs(current - proxima.track))
+            order.append(proxima.track)
+            current = proxima.track
+
+        return SchedulingResult(order, movements, sum(movements))
+
+ESCALONADORES = {"fcfs": FCFSScheduler, "sstf": SSTFScheduler}
 
 class SimulatedDisk:
     def __init__(self, disk_id, block_size=4096):
